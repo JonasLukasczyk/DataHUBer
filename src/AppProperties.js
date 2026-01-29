@@ -2,7 +2,8 @@ import { reactive } from 'vue';
 
 const AppProperties = {
   _: reactive({
-    tokens: [],
+    token: '',
+    location: ''
   }),
 };
 
