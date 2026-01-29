@@ -1,7 +1,7 @@
 <template>
   <q-page class="flex flex-center">
 
-    <h1 class='text-weight-bold'>Welcome!</h1>
+    Tokens
 
   </q-page>
 </template>
