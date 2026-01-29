@@ -4,6 +4,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import GitService from './GitService.js';
+import InternetService from './InternetService.js';
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -16,10 +17,18 @@ async function createWindow() {
   /**
    * Initial window options
    */
+
+  const services = {};
+  for(let [name,api] of [['GitService',GitService],['InternetService',InternetService]]){
+    services[name] = Object.getOwnPropertyNames(api).filter(k => typeof api[k] === 'function')
+    for(let f of services[name])
+      ipcMain.handle(`${name}.${f}`, api[f]);
+  }
+
   mainWindow = new BrowserWindow({
     icon: path.resolve(currentDir, 'icons/icon.png'), // tray icon
-    width: 1000,
-    height: 600,
+    width: 1000*2,
+    height: 600*2,
     useContentSize: true,
     webPreferences: {
       contextIsolation: true,
@@ -31,6 +40,9 @@ async function createWindow() {
           'electron-preload' + process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION
         )
       ),
+      additionalArguments: [
+        '--services='+JSON.stringify(services)
+      ]
     },
   });
 
@@ -55,13 +67,7 @@ async function createWindow() {
   });
 }
 
-const init = async () => {
-  for (let key of Object.keys(GitService)) {
-    ipcMain.handle('GitService.' + key, GitService[key]);
-  }
-};
-
-app.whenReady().then(init).then(createWindow);
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   console.log(platform);
