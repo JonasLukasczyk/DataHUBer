@@ -8,7 +8,12 @@ const App = {
     error: null,
     git_log: '',
     remotes: [],
-    active_remote: null
+    active_remote: null,
+    git_version: null,
+    git_lfs_version: null,
+    location_has_git: null,
+    location_has_lfs: null,
+    repo_status: null
   }),
   config: reactive({
     token: '',
@@ -25,6 +30,11 @@ const App = {
       }, wait);
     };
   },
+
+  urlWithoutCredentials: url => {
+    return url.replace(/^https:\/\/[^@]+@/, 'https://');
+  },
+
   toHttpsWithToken: gitUrl => {
     let httpsUrl;
 
@@ -46,7 +56,7 @@ const App = {
 
     // Insert token
     const urlWithoutProtocol = httpsUrl.replace(/^https:\/\//, '');
-    return `https://${encodeURIComponent(App.config.token)}@${urlWithoutProtocol}`;
+    return `https://${App._.user.username}:${encodeURIComponent(App.config.token)}@${urlWithoutProtocol}`;
   },
 };
 

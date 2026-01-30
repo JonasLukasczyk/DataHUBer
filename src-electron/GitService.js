@@ -1,6 +1,6 @@
 import { app, dialog, BrowserWindow } from 'electron';
 import fs from 'fs';
-import path from 'path';
+import PATH from 'path';
 import InternetService from './InternetService.js';
 import querystring from 'query-string';
 import { spawn } from 'child_process';
@@ -21,13 +21,13 @@ const GitService = {
 
   readConfig: async () => {
     try {
-      return JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'DataHUBer.json'), 'utf8'));
+      return JSON.parse(fs.readFileSync(PATH.join(app.getPath('userData'), 'DataHUBer.json'), 'utf8'));
     } catch {
       return {};
     }
   },
   writeConfig: async (e, config) => {
-    fs.writeFileSync(path.join(app.getPath('userData'), 'DataHUBer.json'), config);
+    fs.writeFileSync(PATH.join(app.getPath('userData'), 'DataHUBer.json'), config);
   },
 
   run: async options => {
@@ -63,7 +63,7 @@ const GitService = {
         }
       };
 
-      send(`git ${args.join(' ')}`);
+      send(`$ git ${args.join(' ')}`);
 
       let output = '';
 
@@ -96,16 +96,16 @@ const GitService = {
     });
   },
 
-  getStatus: async (e, location) =>
+  getStatus: async (e, path) =>
     await GitService.run({
-      args: ['status'],
-      cwd: location,
+      args: ['status', '-u'],
+      cwd: path,
     }),
 
-  getRemotes: async (e, location) =>
+  getRemotes: async (e, path) =>
     await GitService.run({
       args: ['remote', '-v'],
-      cwd: location,
+      cwd: path,
     }),
 
   getUserData: async (e, token) => {
@@ -132,6 +132,54 @@ const GitService = {
       port: 443,
       method: 'GET',
     });
+  },
+
+  getGitVersion: async (e, path) =>
+    await GitService.run({
+      args: ['--version'],
+      cwd: path,
+    }),
+
+  getGitLfsVersion: async (e, path) =>
+    await GitService.run({
+      args: ['lfs', '--version'],
+      cwd: path,
+    }),
+
+  initializeLFS: async (e, path) => {
+    await GitService.run({
+      args: ['lfs', 'install'],
+      cwd: path,
+    });
+    const attr = PATH.join(path, '.gitattributes');
+    fs.writeFileSync(
+      attr,
+      `
+*.tif* filter=lfs diff=lfs merge=lfs -text
+*preview*.tif* -filter -diff -merge text
+    `
+    );
+    await GitService.run({
+      args: ['add', attr],
+      cwd: path,
+    });
+  },
+
+  setRemoteUrl: async (e, path, remote, url) =>
+    await GitService.run({
+      args: ['remote', 'set-url', remote, url],
+      cwd: path,
+    }),
+
+  push: async (e, path, remote, branch) =>
+    await GitService.run({
+      args: ['push', '-v', remote, branch],
+      cwd: path,
+      debug: true
+    }),
+
+  check: async (e, path, isFile) => {
+    return fs.existsSync(path) && (isFile ? fs.lstatSync(path).isFile() : fs.lstatSync(path).isDirectory());
   },
 };
 

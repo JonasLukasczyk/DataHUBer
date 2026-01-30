@@ -47,6 +47,7 @@ const InternetService = {
       }
     });
   },
+
 };
 
 export default InternetService;

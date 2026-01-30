@@ -8,7 +8,7 @@
 
 <style>
 html {
-  zoom:1.5;
+  zoom:1.25;
 }
 
 .material-symbols-outlined {
