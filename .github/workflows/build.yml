@@ -30,4 +30,4 @@ jobs:
       - name: Build
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: npx quasar build -m electron -P
+        run: npx quasar build -m electron -P always --target=win
