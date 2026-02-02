@@ -6,6 +6,8 @@ import SelectProjectDialog from '../dialogs/SelectProjectDialog.vue';
 import pat0 from '../assets/pat_0.jpg';
 import pat1 from '../assets/pat_1.jpg';
 import CheckIcon from '../components/CheckIcon.vue';
+import GitLog from '../components/GitLog.vue';
+import CommitDialog from '../dialogs/CommitDialog.vue';
 
 import { Dialog } from 'quasar';
 
@@ -15,6 +17,8 @@ const _ = reactive({
 
 const openDirectory = async () => {
   App._.location = (await window.GitService.selectDirectory('Select Data Folder')) || '';
+  // await App.wait(500);
+  // _.step = 3;
 };
 
 const visit = url => {
@@ -22,35 +26,66 @@ const visit = url => {
 };
 
 const verifyGit = async () => {
-  App._.git_log = '';
-  App._.git_version = [];
-  App._.git_lfs_version = [];
-  App._.location_has_git = [];
-  App._.location_has_lfs = [];
-  App._.repo_status = [];
-  await App.wait(300);
-  App._.git_version = await window.GitService.getGitVersion(App._.location);
-  await App.wait(300);
-  App._.git_lfs_version = await window.GitService.getGitLfsVersion(App._.location);
+  App._.git_log.push('[VERIFICATION] [START] ============================================================');
+  App._.ready_for_upload = false;
+  App._.git_version = [2];
+  App._.git_lfs_version = [2];
+  App._.location_has_git = [2];
+  App._.location_has_lfs = [2];
+  App._.repo_status = [2];
 
-  await App.wait(300);
-  App._.location_has_git = [await window.GitService.check(App._.location + '/.git', false)];
-  await App.wait(300);
-  App._.location_has_lfs = [await window.GitService.check(App._.location + '/.gitattributes', true)];
+  const cancel = props => props.forEach(p => (p[0] = 3));
 
-  await App.wait(300);
-  App._.repo_status = await window.GitService.getStatus(App._.location);
-  App._.repo_status[0] = isReadyForPush(App._.repo_status[1]) === 1;
-  // Dialog.create({
-  //   component: GitDialog,
-  //   componentProps: {
-  //     persistent: false,
-  //   },
-  // });
-  // await App.wait(1000);
-  // await window.GitService.getStatus(App._.location);
-  // await window.GitService.getStatus(App._.location);
-  // await window.GitService.getStatus(App._.location);
+  for (let i = 0; i < 1; i++) {
+    await App.wait(300);
+
+    App._.git_version = await window.GitService.getGitVersion(App._.location);
+    if (!App._.git_version[0]) {
+      cancel([App._.git_lfs_version, App._.location_has_git, App._.location_has_lfs, App._.repo_status]);
+      continue;
+    }
+    await App.wait(300);
+
+    App._.git_lfs_version = await window.GitService.getGitLfsVersion(App._.location);
+    if (!App._.git_lfs_version[0]) {
+      cancel([App._.location_has_git, App._.location_has_lfs, App._.repo_status]);
+      continue;
+    }
+    await App.wait(300);
+
+    App._.location_has_git = [await window.GitService.check(App._.location + '/.git', false)];
+    if (!App._.location_has_git[0]) {
+      cancel([App._.location_has_lfs, App._.repo_status]);
+      continue;
+    }
+    await App.wait(300);
+
+    App._.location_has_lfs = [await window.GitService.check(App._.location + '/.gitattributes', true)];
+    if (!App._.location_has_lfs[0]) {
+      cancel([App._.repo_status]);
+      continue;
+    }
+
+    await App.wait(300);
+    App._.repo_status = await window.GitService.getStatus(App._.location);
+    App._.repo_status[0] = await isReadyForPush(App._.repo_status[1]);
+  }
+
+  App._.ready_for_upload =
+    App._.repo_status[0] === true && App._.location_has_git[0] === true && App._.location_has_lfs[0] === true;
+
+  App._.git_log.push('[VERIFICATION] [END] ==============================================================');
+
+  // if(App._.ready_for_upload){
+  //   await App.wait(500);
+  //   _.step=4;
+  // }
+};
+
+const initializeGit = async () => {
+  await window.GitService.initializeGit(App._.location);
+  await window.GitService.initializeLFS(App._.location);
+  await verifyGit();
 };
 
 const initializeLFS = async () => {
@@ -58,10 +93,23 @@ const initializeLFS = async () => {
   await verifyGit();
 };
 
-const isReadyForPush = status =>
-  status.indexOf('Untracked files') >= 0 ? 2 : status.indexOf('Your branch is up to date with') >= 0 ? 1 : 0;
+const isReadyForPush = async () => {
+  const status = await window.GitService.getStatus(App._.location, true);
+  return status[1].length < 1;
+};
 
-const commit = async () => {};
+const commit = async () => {
+  Dialog.create({
+    component: CommitDialog,
+  }).onOk(async msg => {
+    App._.git_log.push('[COMMIT] [START] ============================================================');
+    await window.GitService.setGitUser(App._.location, App._.user.name, App._.user.email);
+    await window.GitService.addAll(App._.location);
+    await window.GitService.commit(App._.location, msg);
+    App._.git_log.push('[COMMIT] [END]   ============================================================');
+    await verifyGit();
+  });
+};
 
 const selectProject = async () => {
   Dialog.create({
@@ -73,9 +121,13 @@ const selectProject = async () => {
       persistent: true,
       // ...more..props...
     },
-  }).onOk(p => {
-    console.log(p);
-    App._.uplink = p.http_url_to_repo;
+  }).onOk(async p => {
+    if (App._.active_remote) {
+      await window.GitService.setRemoteUrl(App._.location, App._.active_remote.split('$$$')[0], p.http_url_to_repo);
+    } else {
+      await window.GitService.createRemote(App._.location, 'origin', p.http_url_to_repo);
+    }
+    await App.updateRemotes();
   });
 };
 
@@ -91,11 +143,13 @@ watch(
 const checkLabel = (property, y, n, l) => (property[0] === true ? y : property[0] === false ? n : l);
 
 const push = async () => {
-  // TODO BRANCH
+  App._.git_log.push('[PUSH] [START] ============================================================');
   const remote = App._.active_remote.split('$$$');
   const patched_remote = App.toHttpsWithToken(remote[1]);
   await window.GitService.setRemoteUrl(App._.location, remote[0], patched_remote);
   await window.GitService.push(App._.location, remote[0], 'main');
+  await window.GitService.setRemoteUrl(App._.location, remote[0], App.urlWithoutCredentials(patched_remote));
+  App._.git_log.push('[PUSH] [END] ==============================================================');
 };
 
 // glpat-AOiEcEGw0QkATuU8R0hsXm86MQp1OmEH.01.0w1hrd8u8
@@ -111,6 +165,7 @@ const push = async () => {
       color="primary"
       animated
       header-nav
+      header-class="step_header"
     >
       <q-step :name="-1" title="" icon="home">
         <div>
@@ -129,6 +184,9 @@ const push = async () => {
               detailed instructions are located below.
             </li>
           </ul>
+        </div>
+        <div style="text-align: center">
+          <q-btn label="Continue" icon="arrow_circle_right" color="primary" @click="() => (_.step = 0)" />
         </div>
       </q-step>
       <q-step :name="0" title="Token" icon="key" :color="App._.user ? 'green-7' : 'grey'">
@@ -161,22 +219,24 @@ const push = async () => {
         </div>
 
         <div v-if="App._.user && !App._.error" class="q-gutter-md row" style="margin: 1em">
-          <q-input v-model="App._.user.username" label="Account" readonly outlined>
+          <q-input v-model="App._.user.username" label="Account" readonly outlined dense>
             <template v-slot:prepend>
               <q-icon name="account_circle" />
             </template>
           </q-input>
 
-          <q-input v-model="App._.user.name" label="Name" readonly outlined>
+          <q-input v-model="App._.user.name" label="Name" readonly outlined dense>
             <template v-slot:prepend>
               <q-icon name="person" />
             </template>
           </q-input>
-          <q-input v-model="App._.user.commit_email" label="eMail" readonly outlined>
+          <q-input v-model="App._.user.commit_email" label="eMail" readonly outlined dense>
             <template v-slot:prepend>
               <q-icon name="mail" />
             </template>
           </q-input>
+
+          <q-btn label="Continue" icon="arrow_circle_right" color="primary" @click="() => (_.step = 1)" />
         </div>
         <div v-else-if="App._.error" style="margin: 1em">
           <q-banner>
@@ -258,11 +318,27 @@ const push = async () => {
           </q-input>
           <q-btn label="Select Directory" icon="folder" color="primary" @click="openDirectory" />
         </div>
+
+        <div style="text-align: center">
+          <q-btn
+            label="Continue"
+            icon="arrow_circle_right"
+            color="primary"
+            @click="() => (_.step = 3)"
+            :disabled="!App._.location"
+          />
+        </div>
       </q-step>
       <!-- <q-step :name="2" title="Meta Data" icon="sym_o_add_notes" :disable="App._.location === ''"> -->
       <!--   <p style="margin-top: 2em">In the future it will be possible to edit meta data here.</p> -->
       <!-- </q-step> -->
-      <q-step :name="3" title="Git Status" icon="sym_o_commit" :disable="App._.location === ''">
+      <q-step
+        :name="3"
+        title="Git Status"
+        icon="sym_o_commit"
+        :disable="App._.location === ''"
+        :color="App._.ready_for_upload ? 'green-7' : 'grey'"
+      >
         <div class="row q-gutter-md">
           <q-list bordered class="rounded-borders col" style="max-width: 430px" separator>
             <q-item-label header>
@@ -297,7 +373,7 @@ const push = async () => {
               </q-item-section>
             </q-item>
 
-            <q-item>
+            <q-item clickable @click="initializeGit">
               <q-item-section avatar>
                 <CheckIcon :property="App._.location_has_git" />
               </q-item-section>
@@ -339,25 +415,22 @@ const push = async () => {
               </q-item-section>
             </q-item>
 
+            <q-item>
+              <q-item-section>
+                <q-btn
+                  label="Continue"
+                  icon="arrow_circle_right"
+                  color="primary"
+                  @click="() => (_.step = 4)"
+                  :disabled="!App._.ready_for_upload"
+                />
+              </q-item-section>
+            </q-item>
+
             <q-separator />
           </q-list>
 
-          <q-list bordered class="rounded-borders col">
-            <q-item-label header>Log</q-item-label>
-            <q-item>
-              <pre
-                style="
-                  width: 100%;
-                  height: 20em;
-                  overflow: scroll;
-                  background-color: #eee;
-                  padding: 1em;
-                  border-radius: 1em;
-                "
-                >{{ App._.git_log }}</pre
-              >
-            </q-item>
-          </q-list>
+          <GitLog />
         </div>
 
         <div>
@@ -386,105 +459,100 @@ const push = async () => {
         <!-- <q-btn label="Verify Git Status" icon="verified" color="primary" @click="verifyGit" /> -->
       </q-step>
 
-      <q-step :name="4" title="Upload" icon="upload">
+      <q-step :name="4" title="Upload" icon="upload" :disable="!App._.ready_for_upload">
         <div class="q-gutter-md row">
-          <q-list bordered class="rounded-borders col-4">
-            <q-item-label header>Remote</q-item-label>
+          <q-list bordered class="rounded-borders col" dense>
+            <q-item-label header>Projects</q-item-label>
+            <q-item v-if='App._.remotes.length<1'>
+              <q-item-section avatar>
+                <q-icon name='filter_list_off' color='grey-7'/>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>No linked projects found</q-item-label>
+              </q-item-section>
+            </q-item>
+
             <q-item tag="label" v-ripple v-for="r in App._.remotes" :key="r">
               <q-item-section avatar>
                 <q-radio v-model="App._.active_remote" :val="r" color="primary" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>{{ r.split('$$$')[0] }}</q-item-label>
+                <!-- <q-item-label>{{ r.split('$$$')[0] }}</q-item-label> -->
                 <q-item-label caption>{{ App.urlWithoutCredentials(r.split('$$$')[1]) }}</q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
 
-          <q-list bordered class="rounded-borders col">
-            <q-item-label header>Log</q-item-label>
-            <q-item>
-              <pre
-                style="
-                  width: 100%;
-                  height: 20em;
-                  overflow: scroll;
-                  background-color: #eee;
-                  padding: 1em;
-                  border-radius: 1em;
-                "
-                >{{ App._.git_log }}</pre
-              >
-            </q-item>
-          </q-list>
         </div>
-        <p>
-          To upload the directory to the DataHUB you have to specify a target project URL. If you do not already have a
-          project, you can create one following the instructions below.
-        </p>
-        <q-btn label="Upload" color="primary" icon="upload" @click="push" />
 
-        <div class="q-gutter-sm row" style="margin: 1em">
+        <div class="q-gutter-sm row" style="margin: 0em 0 2em 0">
           <q-btn label="Find Existing Project" color="primary" icon="search" @click="selectProject" />
 
           <q-btn
             label="Create New Project"
-            color="primary"
             icon="add"
-            @click="
-              () =>
-                visit(
-                  'https://datahub.rz.rptu.de/-/user_settings/personal_access_tokens?page=1&state=active&sort=expires_asc'
-                )
-            "
+            color='primary'
+            @click="() => visit('https://datahub.rz.rptu.de/projects/new?namespace_id=225#blank_project')"
           />
         </div>
 
-        <ol>
-          <li>
-            Click the <strong>"Create Project"</strong> button above. This will open GitLab in your browser. If
-            prompted, log in using your institutional credentials.
-          </li>
+        <div class="q-gutter-md row">
+          <GitLog />
+        </div>
+        <div class="q-gutter-sm row" style="margin: 1em">
+          <q-btn label="Upload" color="primary" icon="upload" @click="push" :disabled="!App._.active_remote" />
+        </div>
 
-          <li>On the GitLab dashboard, click <strong>"New project"</strong>.</li>
-
-          <li>Select <strong>"Create blank project"</strong>.</li>
-
-          <li>Enter a <strong>Project name</strong> (for example, <em>"my-datahub-project"</em>).</li>
-
-          <li>(Optional) Add a <strong>Description</strong> for the project.</li>
-
-          <li>
-            Set the <strong>Visibility Level</strong> according to your needs. In most cases,
-            <strong>Private</strong> is recommended.
-          </li>
-
-          <li>Leave all other settings at their default values.</li>
-
-          <li>
-            When the page looks similar to the image below, click the <strong>"Create project"</strong> button.
-            <img
-              :src="pat0"
-              style="width: 90%; border: 0.1em solid black; border-radius: 0.5em; padding: 1em; margin: 1em"
-            />
-          </li>
-
-          <li>
-            After the project is created, you will be redirected to the project overview page. If you can see the
-            project name and an empty repository, the project is ready to be used as a DataHUB upload target.
-          </li>
-        </ol>
+        <div>
+          <h5 style="margin-bottom: 1em">Instructions</h5>
+          <ul>
+            <li>To upload the chosen directory you have to specify the target DataHUB project.</li>
+            <li>
+              You can either choose one of the automatically detected projects from the list above, or from a list of
+              all available projects on the DataHUB via the <i>"Find Existing Project"</i> button.
+            </li>
+            <li>
+              If you did not create a target project yet, you can do so by following these instructions:
+              <ol>
+                <li>
+                  Push the <i>"Create New Project"</i> button to open the corresponding DataHUB page in your browser.
+                </li>
+                <li>Specify the project name.</li>
+                <li>Per default the project will be added to the Gulliver group.</li>
+                <li>Specify the visibility.</li>
+                <li>IMPORTANT: Uncheck the <i>"Initialize repository with a README"</i> option.</li>
+                <li>Push the <i>"Create Project"</i> button.</li>
+                <li>
+                  Once created, return to DataHUBer and select your new project from the list shown under
+                  <i>"Find Existing Project"</i>.
+                </li>
+              </ol>
+            </li>
+          </ul>
+        </div>
       </q-step>
     </q-stepper>
   </q-page>
 </template>
 
-<style scoped>
+<style>
+.q-stepper__tab {
+  border-bottom: 0.4em solid #ccc;
+  padding-bottom: 0;
+}
+
+.q-stepper__tab--active {
+  border-bottom-color: var(--primary);
+}
+
 p,
 li {
   font-size: 1.25em;
 }
+li li {
+  font-size: 1em;
+}
 pre {
-  font-size:0.75em;
+  font-size: 0.75em;
 }
 </style>
