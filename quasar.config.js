@@ -189,6 +189,34 @@ export default defineConfig((/* ctx */) => {
         // https://www.electron.build/configuration/configuration
 
         appId: 'datahuber',
+
+        win: {
+          target: [
+            {
+              target: 'nsis',
+              arch: ['x64', 'arm64', 'ia32'],
+            },
+          ],
+        },
+        mac: {
+          target: [
+            {
+              target: 'dmg',
+              arch: ['x64', 'arm64'],
+            },
+          ],
+        },
+        linux: {
+          target: [
+            {
+              target: 'AppImage',
+              arch: ['x64', 'arm64', 'ia32', 'armv7l'],
+            },
+          ],
+        },
+        publish: {
+          provider: 'github',
+        },
       },
     },
 
