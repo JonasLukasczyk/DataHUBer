@@ -121,17 +121,17 @@ const GitService = {
 
   commit: async (e, path, message) =>
     await GitService.run({
-      args: ['commit', '-m', message],
+      args: ['commit', '-m', '"' + message + '"'],
       cwd: path,
     }),
 
   setGitUser: async (e, path, name, email) => {
     await GitService.run({
-      args: ['config', '--local', 'user.name', name],
+      args: ['config', '--local', 'user.name', '"' + name + '"'],
       cwd: path,
     });
     await GitService.run({
-      args: ['config', '--local', 'user.email', email],
+      args: ['config', '--local', 'user.email', '"' + email + '"'],
       cwd: path,
     });
   },
@@ -174,52 +174,12 @@ const GitService = {
       cwd: path,
     }),
 
-  initializeGit: async (e, path) => {
+  initializeGit: async (e, path) =>
     await GitService.run({
       args: ['init', '--initial-branch=main'],
       cwd: path,
-    });
-    fs.writeFileSync(
-      PATH.join(path, '.gitignore'),
-      `
-.DS_Store
-.thumbs.db
-node_modules
+    }),
 
-package-lock.json
-
-# Quasar core related directories
-.quasar
-/dist
-/quasar.config.*.temporary.compiled*
-
-# Cordova related directories and files
-/src-cordova/node_modules
-/src-cordova/platforms
-/src-cordova/plugins
-/src-cordova/www
-
-# Capacitor related directories and files
-/src-capacitor/www
-/src-capacitor/node_modules
-
-# Log files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Editor directories and files
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-
-# local .env files
-.env.local*
-`
-    );
-  },
   initializeLFS: async (e, path) => {
     await GitService.run({
       args: ['lfs', 'install'],
