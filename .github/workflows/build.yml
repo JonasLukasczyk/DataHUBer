@@ -10,6 +10,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  release-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx quasar build -m electron -P always --target=linux
+
   release-win:
     runs-on: windows-latest
 

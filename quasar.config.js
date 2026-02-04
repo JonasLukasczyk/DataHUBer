@@ -210,8 +210,8 @@ export default defineConfig((/* ctx */) => {
         linux: {
           target: [
             {
-              target: 'AppImage',
-              arch: ['x64', 'arm64', 'ia32', 'armv7l'],
+              target: 'deb',
+              arch: ['x64', 'arm64'],
             },
           ],
         },
