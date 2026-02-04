@@ -3,7 +3,6 @@ import { watch, reactive } from 'vue';
 import App from '../App.js';
 // import GitDialog from '../dialogs/GitDialog.vue';
 import SelectProjectDialog from '../dialogs/SelectProjectDialog.vue';
-import pat0 from '../assets/pat_0.jpg';
 import pat1 from '../assets/pat_1.jpg';
 import CheckIcon from '../components/CheckIcon.vue';
 import GitLog from '../components/GitLog.vue';
@@ -152,7 +151,6 @@ const push = async () => {
   App._.git_log.push('[PUSH] [END] ==============================================================');
 };
 
-// glpat-AOiEcEGw0QkATuU8R0hsXm86MQp1OmEH.01.0w1hrd8u8
 </script>
 
 <template>
@@ -267,19 +265,15 @@ const push = async () => {
             <li>Under <strong>Scopes</strong>, select <strong>all</strong> available checkboxes.</li>
 
             <li>
-              When the page looks similar to the image below, click the <strong>"Create Token"</strong> button in the
+              Click the <strong>"Create Token"</strong> button in the
               bottom left corner.
-              <img
-                :src="pat0"
-                style="width: 90%; border: 0.1em solid black; border-radius: 0.5em; padding: 1em; margin: 1em"
-              />
             </li>
 
             <li>
               On the newly opened page, click the <strong>eye icon</strong> in the green box to reveal your token. Copy
-              the token and paste it into the <strong>"Token"</strong> input field in DataHUBer. <br /><br />
-              <strong>Important:</strong> This is the <em>only</em> time the token will be visible. If you do not copy
-              it now, you will need to create a new token.
+              the token and paste it into the <strong>"Token"</strong> input field in DataHUBer. <br />
+              <div style='color:#cc0000'><strong>Important:</strong> This is the <em>only</em> time the token will be visible. If you do not copy
+                it now, you will need to create a new token.</div>
               <img
                 :src="pat1"
                 style="width: 90%; border: 0.1em solid black; border-radius: 0.5em; padding: 1em; margin: 1em"
@@ -287,8 +281,9 @@ const push = async () => {
             </li>
 
             <li>
-              DataHUBer will automatically verify the token by fetching your user data. If your name and email address
-              are displayed, the token is valid and you can proceed to the next step.
+              DataHUBer will automatically verify the token by fetching your user data.
+              If your name and email address are displayed, the token is valid and you can proceed to the next step.
+              The DataHUBer will also remember the entered Token for future sessions.
             </li>
           </ol>
         </div>
