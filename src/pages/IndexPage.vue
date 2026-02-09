@@ -2,7 +2,6 @@
 import { watch, reactive } from 'vue';
 import App from '../App.js';
 // import GitDialog from '../dialogs/GitDialog.vue';
-import SelectProjectDialog from '../dialogs/SelectProjectDialog.vue';
 import pat1 from '../assets/pat_1.jpg';
 import CheckIcon from '../components/CheckIcon.vue';
 import GitLog from '../components/GitLog.vue';
@@ -35,29 +34,31 @@ const verifyGit = async () => {
 
   const cancel = props => props.forEach(p => (p[0] = 3));
 
+  const delay = 200;
+
   for (let i = 0; i < 1; i++) {
-    await App.wait(300);
+    await App.wait(delay);
 
     App._.git_version = await window.GitService.getGitVersion(App._.location);
     if (!App._.git_version[0]) {
       cancel([App._.git_lfs_version, App._.location_has_git, App._.location_has_lfs, App._.repo_status]);
       continue;
     }
-    await App.wait(300);
+    await App.wait(delay);
 
     App._.git_lfs_version = await window.GitService.getGitLfsVersion(App._.location);
     if (!App._.git_lfs_version[0]) {
       cancel([App._.location_has_git, App._.location_has_lfs, App._.repo_status]);
       continue;
     }
-    await App.wait(300);
+    await App.wait(delay);
 
     App._.location_has_git = [await window.GitService.check(App._.location + '/.git', false)];
     if (!App._.location_has_git[0]) {
       cancel([App._.location_has_lfs, App._.repo_status]);
       continue;
     }
-    await App.wait(300);
+    await App.wait(delay);
 
     App._.location_has_lfs = [await window.GitService.check(App._.location + '/.gitattributes', true)];
     if (!App._.location_has_lfs[0]) {
@@ -65,7 +66,7 @@ const verifyGit = async () => {
       continue;
     }
 
-    await App.wait(300);
+    await App.wait(delay);
     App._.repo_status = await window.GitService.getStatus(App._.location);
     App._.repo_status[0] = await isReadyForPush(App._.repo_status[1]);
   }
@@ -110,26 +111,6 @@ const commit = async () => {
   });
 };
 
-const selectProject = async () => {
-  Dialog.create({
-    component: SelectProjectDialog,
-
-    // props forwarded to your custom component
-    componentProps: {
-      text: 'something',
-      persistent: true,
-      // ...more..props...
-    },
-  }).onOk(async p => {
-    if (App._.active_remote) {
-      await window.GitService.setRemoteUrl(App._.location, App._.active_remote.split('$$$')[0], p.http_url_to_repo);
-    } else {
-      await window.GitService.createRemote(App._.location, 'origin', p.http_url_to_repo);
-    }
-    await App.updateRemotes();
-  });
-};
-
 watch(
   () => _.step,
   async () => {
@@ -143,14 +124,13 @@ const checkLabel = (property, y, n, l) => (property[0] === true ? y : property[0
 
 const push = async () => {
   App._.git_log.push('[PUSH] [START] ============================================================');
-  const remote = App._.active_remote.split('$$$');
-  const patched_remote = App.toHttpsWithToken(remote[1]);
-  await window.GitService.setRemoteUrl(App._.location, remote[0], patched_remote);
-  await window.GitService.push(App._.location, remote[0], 'main');
-  await window.GitService.setRemoteUrl(App._.location, remote[0], App.urlWithoutCredentials(patched_remote));
+  const remote = App._.project.http_url_to_repo;
+  const patched_remote = App.toHttpsWithToken(remote);
+  await window.GitService.setRemoteUrl(App._.location, 'origin', patched_remote);
+  await window.GitService.push(App._.location, 'origin', 'main');
+  await window.GitService.setRemoteUrl(App._.location, 'origin', App.urlWithoutCredentials(patched_remote));
   App._.git_log.push('[PUSH] [END] ==============================================================');
 };
-
 </script>
 
 <template>
@@ -264,16 +244,15 @@ const push = async () => {
 
             <li>Under <strong>Scopes</strong>, select <strong>all</strong> available checkboxes.</li>
 
-            <li>
-              Click the <strong>"Create Token"</strong> button in the
-              bottom left corner.
-            </li>
+            <li>Click the <strong>"Create Token"</strong> button in the bottom left corner.</li>
 
             <li>
               On the newly opened page, click the <strong>eye icon</strong> in the green box to reveal your token. Copy
               the token and paste it into the <strong>"Token"</strong> input field in DataHUBer. <br />
-              <div style='color:#cc0000'><strong>Important:</strong> This is the <em>only</em> time the token will be visible. If you do not copy
-                it now, you will need to create a new token.</div>
+              <div style="color: #cc0000">
+                <strong>Important:</strong> This is the <em>only</em> time the token will be visible. If you do not copy
+                it now, you will need to create a new token.
+              </div>
               <img
                 :src="pat1"
                 style="width: 90%; border: 0.1em solid black; border-radius: 0.5em; padding: 1em; margin: 1em"
@@ -281,9 +260,9 @@ const push = async () => {
             </li>
 
             <li>
-              DataHUBer will automatically verify the token by fetching your user data.
-              If your name and email address are displayed, the token is valid and you can proceed to the next step.
-              The DataHUBer will also remember the entered Token for future sessions.
+              DataHUBer will automatically verify the token by fetching your user data. If your name and email address
+              are displayed, the token is valid and you can proceed to the next step. The DataHUBer will also remember
+              the entered Token for future sessions.
             </li>
           </ol>
         </div>
@@ -455,72 +434,80 @@ const push = async () => {
       </q-step>
 
       <q-step :name="4" title="Upload" icon="upload" :disable="!App._.ready_for_upload">
-        <div class="q-gutter-md row">
-          <q-list bordered class="rounded-borders col" dense>
-            <q-item-label header>Projects</q-item-label>
-            <q-item v-if='App._.remotes.length<1'>
-              <q-item-section avatar>
-                <q-icon name='filter_list_off' color='grey-7'/>
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>No linked projects found</q-item-label>
-              </q-item-section>
-            </q-item>
+        <div class="q-gutter-md row" style="margin-bottom: 1.5em">
+          <q-select
+            label="Project"
+            hide-dropdown-icon
+            outlined
+            v-model="App._.project"
+            :options="App._.projects"
+            option-value="id"
+            option-label="name_with_namespace"
+            options-dense
+            @filter="App.getProjects"
+            style="min-width: 40em"
+            dense
+          >
+            <template v-slot:prepend>
+              <q-icon name="cloud" />
+            </template>
 
-            <q-item tag="label" v-ripple v-for="r in App._.remotes" :key="r">
-              <q-item-section avatar>
-                <q-radio v-model="App._.active_remote" :val="r" color="primary" />
-              </q-item-section>
-              <q-item-section>
-                <!-- <q-item-label>{{ r.split('$$$')[0] }}</q-item-label> -->
-                <q-item-label caption>{{ App.urlWithoutCredentials(r.split('$$$')[1]) }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
+            <template v-slot:append>
+              <q-btn
+                round
+                dense
+                flat
+                icon="sym_o_captive_portal"
+                @click.stop.prevent="() => visit(App._.project.http_url_to_repo)"
+                :disable="!App._.project"
+              >
+                <q-tooltip> Show in Browser </q-tooltip>
+              </q-btn>
 
-        </div>
-
-        <div class="q-gutter-sm row" style="margin: 0em 0 2em 0">
-          <q-btn label="Find Existing Project" color="primary" icon="search" @click="selectProject" />
-
-          <q-btn
-            label="Create New Project"
-            icon="add"
-            color='primary'
-            @click="() => visit('https://datahub.rz.rptu.de/projects/new?namespace_id=225#blank_project')"
-          />
+              <q-btn
+                round
+                dense
+                flat
+                icon="add"
+                @click.stop.prevent="
+                  () => visit('https://datahub.rz.rptu.de/projects/new?namespace_id=225#blank_project')
+                "
+              >
+                <q-tooltip> New Project </q-tooltip>
+              </q-btn>
+            </template>
+          </q-select>
+          <q-btn label="Upload" color="primary" icon="upload" @click="push" :disabled="!App._.project" desne />
         </div>
 
         <div class="q-gutter-md row">
           <GitLog />
-        </div>
-        <div class="q-gutter-sm row" style="margin: 1em">
-          <q-btn label="Upload" color="primary" icon="upload" @click="push" :disabled="!App._.active_remote" />
         </div>
 
         <div>
           <h5 style="margin-bottom: 1em">Instructions</h5>
           <ul>
             <li>To upload the chosen directory you have to specify the target DataHUB project.</li>
+            <li>You can choose among the DataHUB projects you have access to as determined by your token.</li>
             <li>
-              You can either choose one of the automatically detected projects from the list above, or from a list of
-              all available projects on the DataHUB via the <i>"Find Existing Project"</i> button.
-            </li>
-            <li>
-              If you did not create a target project yet, you can do so by following these instructions:
+              If you have not created a target project yet, follow these steps:
+
               <ol>
                 <li>
-                  Push the <i>"Create New Project"</i> button to open the corresponding DataHUB page in your browser.
+                  Click the <i>+</i> button in the project selection box. This will open the corresponding DataHUB page
+                  in your browser.
                 </li>
-                <li>Specify the project name.</li>
-                <li>Per default the project will be added to the Gulliver group.</li>
-                <li>Specify the visibility.</li>
-                <li>IMPORTANT: Uncheck the <i>"Initialize repository with a README"</i> option.</li>
-                <li>Push the <i>"Create Project"</i> button.</li>
+                <li>Enter a name for the project.</li>
                 <li>
-                  Once created, return to DataHUBer and select your new project from the list shown under
-                  <i>"Find Existing Project"</i>.
+                  By default, the project will be assigned to the <b>Gulliver</b> group. Keep this setting unchanged.
                 </li>
+                <li>Select the desired visibility for the project.</li>
+                <li>
+                  <b>Important:</b> Make sure the <i>"Initialize repository with a README"</i> option is
+                  <b>unchecked</b>.
+                </li>
+                <li>Click the <i>"Create Project"</i> button.</li>
+                <li>After the project is created, return to DataHUBer and select your new project from the list.</li>
               </ol>
             </li>
           </ul>

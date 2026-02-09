@@ -1,8 +1,9 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
+import MainService from './MainService.js';
 import GitService from './GitService.js';
 import InternetService from './InternetService.js';
 
@@ -19,7 +20,11 @@ async function createWindow() {
    */
 
   const services = {};
-  for(let [name,api] of [['GitService',GitService],['InternetService',InternetService]]){
+  for(let [name,api] of [
+    ['MainService',MainService],
+    ['GitService',GitService],
+    ['InternetService',InternetService]
+  ]){
     services[name] = Object.getOwnPropertyNames(api).filter(k => typeof api[k] === 'function')
     for(let f of services[name])
       ipcMain.handle(`${name}.${f}`, api[f]);
@@ -27,12 +32,10 @@ async function createWindow() {
 
   mainWindow = new BrowserWindow({
     icon: path.resolve(currentDir, 'icons/icon.png'), // tray icon
-    width: 1000*2,
-    height: 600*2,
-    useContentSize: true,
+    width: 1000,
+    height: 600,
     webPreferences: {
       contextIsolation: true,
-      // More info: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/electron-preload-script
       preload: path.resolve(
         currentDir,
         path.join(
@@ -45,6 +48,10 @@ async function createWindow() {
       ]
     },
   });
+
+  globalShortcut.register('Control+=', () => {
+    mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + 1)
+  })
 
   if (process.env.DEV) {
     await mainWindow.loadURL(process.env.APP_URL);
@@ -61,6 +68,10 @@ async function createWindow() {
       mainWindow.webContents.closeDevTools();
     });
   }
+
+  setTimeout(()=>{
+    mainWindow.webContents.setZoomLevel(2)
+  },100);
 
   mainWindow.on('closed', () => {
     mainWindow = null;

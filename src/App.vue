@@ -1,5 +1,10 @@
 <script setup>
-//
+// window.addEventListener('keyup', e => {
+//   if (e.ctrlKey && (e.keyCode === 107 || e.keyCode === 187)) {
+//     console.log('zoom');
+//     window.MainService.zoom(2);
+//   }
+// });
 </script>
 
 <template>
@@ -7,9 +12,9 @@
 </template>
 
 <style>
-html {
-  zoom:1.25;
-}
+/* html { */
+/*   zoom:1.25; */
+/* } */
 
 .material-symbols-outlined {
   font-variation-settings:
@@ -18,7 +23,6 @@ html {
     'GRAD' 0,
     'opsz' 48;
 }
-
 
 .fade-enter-active,
 .fade-leave-active {
@@ -49,5 +53,4 @@ html {
   max-height: 200px; /* must be >= content height */
   opacity: 1;
 }
-
 </style>

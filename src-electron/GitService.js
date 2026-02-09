@@ -199,11 +199,23 @@ const GitService = {
     });
   },
 
-  setRemoteUrl: async (e, path, remote, url) =>
-    await GitService.run({
-      args: ['remote', 'set-url', remote, url],
+  setRemoteUrl: async (e, path, remote, url) => {
+    const [code, res] = await GitService.run({
+      args: ['remote'],
       cwd: path,
-    }),
+      silent: true,
+    });
+    if (!code) return [false, res];
+    return res.indexOf(remote) < 0
+      ? await GitService.run({
+          args: ['remote', 'add', remote, url],
+          cwd: path,
+        })
+      : await GitService.run({
+          args: ['remote', 'set-url', remote, url],
+          cwd: path,
+        });
+  },
 
   push: async (e, path, remote, branch) =>
     await GitService.run({
@@ -214,6 +226,38 @@ const GitService = {
 
   check: async (e, path, isFile) => {
     return fs.existsSync(path) && (isFile ? fs.lstatSync(path).isFile() : fs.lstatSync(path).isDirectory());
+  },
+
+  getProjectPath(url) {
+    url = url.trim();
+
+    const sshMatch = url.match(/^[^@]+@[^:]+:(.+?)(?:\.git)?$/);
+    if (sshMatch) {
+      return sshMatch[1];
+    }
+
+    const httpsMatch = url.match(/^https?:\/\/[^/]+\/(.+?)(?:\.git)?$/);
+    if (httpsMatch) {
+      return httpsMatch[1];
+    }
+
+    return null;
+  },
+
+  getProject: async (e, url, token) => {
+    console.log(url);
+    // const projectPath = url.split('datahub.rz.rptu.de')[1];
+    // const encodedPath = encodeURIComponent(projectPath);
+    const encodedPath = encodeURIComponent(GitService.getProjectPath(url));
+
+    return await InternetService.getWebPageAsJson(null, {
+      host: 'datahub.rz.rptu.de',
+      path: `/api/v4/projects/${encodedPath}?${querystring.stringify({
+        access_token: token,
+      })}`,
+      port: 443,
+      method: 'GET',
+    });
   },
 };
 
