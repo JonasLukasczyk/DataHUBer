@@ -6,11 +6,7 @@ import querystring from 'query-string';
 import { spawn } from 'child_process';
 
 const GitService = {
-  hello: async (e, a, b) => {
-    return [a, b];
-  },
-
-  selectDirectory: async (e, title) => {
+  selectDirectory: async title => {
     const window = BrowserWindow.getAllWindows().find(w => !w.isDestroyed());
     const result = await dialog.showOpenDialog(window, {
       title: title,
@@ -26,7 +22,7 @@ const GitService = {
       return {};
     }
   },
-  writeConfig: async (e, config) => {
+  writeConfig: async config => {
     fs.writeFileSync(PATH.join(app.getPath('userData'), 'DataHUBer.json'), config);
   },
 
@@ -95,37 +91,37 @@ const GitService = {
     });
   },
 
-  getStatus: async (e, path, verbose) =>
+  getStatus: async (path, verbose) =>
     await GitService.run({
       args: ['status', '-u', verbose ? '-z' : ''],
       cwd: path,
     }),
 
-  getRemotes: async (e, path) =>
+  getRemotes: async path =>
     await GitService.run({
       args: ['remote', '-v'],
       cwd: path,
     }),
 
-  createRemote: async (e, path, name, url) =>
+  createRemote: async (path, name, url) =>
     await GitService.run({
       args: ['remote', 'add', name, url],
       cwd: path,
     }),
 
-  addAll: async (e, path) =>
+  addAll: async path =>
     await GitService.run({
       args: ['add', '.'],
       cwd: path,
     }),
 
-  commit: async (e, path, message) =>
+  commit: async (path, message) =>
     await GitService.run({
       args: ['commit', '-m', '"' + message + '"'],
       cwd: path,
     }),
 
-  setGitUser: async (e, path, name, email) => {
+  setGitUser: async (path, name, email) => {
     await GitService.run({
       args: ['config', '--local', 'user.name', '"' + name + '"'],
       cwd: path,
@@ -136,19 +132,18 @@ const GitService = {
     });
   },
 
-  getUserData: async (e, token) => {
-    return await InternetService.getWebPageAsJson(null, {
+  getUserData: async token =>
+    await InternetService.getWebPageAsJson({
       host: 'datahub.rz.rptu.de',
       path: `/api/v4/user/?${querystring.stringify({
         access_token: token,
       })}`,
       port: 443,
       method: 'GET',
-    });
-  },
+    }),
 
-  getUserProjects: async (e, token) => {
-    return await InternetService.getWebPageAsJson(null, {
+  getUserProjects: async token => {
+    return await InternetService.getWebPageAsJson({
       host: 'datahub.rz.rptu.de',
       path: `/api/v4/projects?${querystring.stringify({
         membership: true,
@@ -162,25 +157,25 @@ const GitService = {
     });
   },
 
-  getGitVersion: async (e, path) =>
+  getGitVersion: async path =>
     await GitService.run({
       args: ['--version'],
       cwd: path,
     }),
 
-  getGitLfsVersion: async (e, path) =>
+  getGitLfsVersion: async path =>
     await GitService.run({
       args: ['lfs', '--version'],
       cwd: path,
     }),
 
-  initializeGit: async (e, path) =>
+  initializeGit: async path =>
     await GitService.run({
       args: ['init', '--initial-branch=main'],
       cwd: path,
     }),
 
-  initializeLFS: async (e, path) => {
+  initializeLFS: async path => {
     await GitService.run({
       args: ['lfs', 'install'],
       cwd: path,
@@ -199,7 +194,7 @@ const GitService = {
     });
   },
 
-  setRemoteUrl: async (e, path, remote, url) => {
+  setRemoteUrl: async (path, remote, url) => {
     const [code, res] = await GitService.run({
       args: ['remote'],
       cwd: path,
@@ -217,14 +212,14 @@ const GitService = {
         });
   },
 
-  push: async (e, path, remote, branch) =>
+  push: async (path, remote, branch) =>
     await GitService.run({
       args: ['push', '-v', remote, branch],
       cwd: path,
       debug: true,
     }),
 
-  check: async (e, path, isFile) => {
+  check: async (path, isFile) => {
     return fs.existsSync(path) && (isFile ? fs.lstatSync(path).isFile() : fs.lstatSync(path).isDirectory());
   },
 
@@ -244,13 +239,13 @@ const GitService = {
     return null;
   },
 
-  getProject: async (e, url, token) => {
+  getProject: async (url, token) => {
     console.log(url);
     // const projectPath = url.split('datahub.rz.rptu.de')[1];
     // const encodedPath = encodeURIComponent(projectPath);
     const encodedPath = encodeURIComponent(GitService.getProjectPath(url));
 
-    return await InternetService.getWebPageAsJson(null, {
+    return await InternetService.getWebPageAsJson({
       host: 'datahub.rz.rptu.de',
       path: `/api/v4/projects/${encodedPath}?${querystring.stringify({
         access_token: token,

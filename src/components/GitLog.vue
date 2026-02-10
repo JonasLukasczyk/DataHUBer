@@ -23,12 +23,12 @@ onMounted(init);
   <q-list bordered class="rounded-borders col">
     <q-item-label header
       >Log
-      <q-btn @click="clear" style="float: right; margin: -0.2em 0 0 0; font-size: 0.85em" icon="close" flat round dense
+      <q-btn @click="clear" style="float: right; margin: -0.2em 0 0 0; font-size: 0.85em" icon="delete" flat round dense
     /></q-item-label>
     <q-item>
       <pre
         ref="pre"
-        style="width: 100%; height: 20em; overflow: scroll; background-color: #eee; padding: 1em; border-radius: 1em"
+        style="width: 100%; height: 27em; overflow: scroll; background-color: #eee; padding: 1em; border-radius: 1em; margin:0"
         >{{ App._.git_log.join('\n') }}</pre
       >
     </q-item>

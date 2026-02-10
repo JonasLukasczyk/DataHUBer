@@ -1,7 +1,10 @@
 import { reactive, watch } from 'vue';
+import CommitDialog from './dialogs/CommitDialog.vue';
+import { Dialog } from 'quasar';
 
 const App = {
   _: reactive({
+    step: -1,
     location: '',
     user: null,
     error: null,
@@ -18,6 +21,8 @@ const App = {
   config: reactive({
     token: '',
   }),
+
+  visit: url => window.InternetService.openExternal(url),
 
   wait: time => new Promise(resolve => setTimeout(resolve, time)),
 
@@ -65,6 +70,89 @@ const App = {
     if (code === 200) App._.projects = projects;
     update && update();
   },
+
+  initializeGit: async () => {
+    await window.GitService.initializeGit(App._.location);
+    await window.GitService.initializeLFS(App._.location);
+    await App.verifyGit();
+  },
+
+  initializeLFS: async () => {
+    await window.GitService.initializeLFS(App._.location);
+    await App.verifyGit();
+  },
+
+  commit: async () => {
+    Dialog.create({
+      component: CommitDialog,
+    }).onOk(async msg => {
+      App._.git_log.push('[COMMIT] [START] ============================================================');
+      await window.GitService.setGitUser(App._.location, App._.user.name, App._.user.email);
+      await window.GitService.addAll(App._.location);
+      await window.GitService.commit(App._.location, msg);
+      App._.git_log.push('[COMMIT] [END]   ============================================================');
+      await App.verifyGit();
+    });
+  },
+
+  isReadyForPush: async () => {
+    const status = await window.GitService.getStatus(App._.location, true);
+    return status[1].length < 1;
+  },
+
+  verifyGit: async () => {
+    App._.git_log.push('[VERIFICATION] [START] ============================================================');
+    App._.ready_for_upload = false;
+    App._.git_version = [2];
+    App._.git_lfs_version = [2];
+    App._.location_has_git = [2];
+    App._.location_has_lfs = [2];
+    App._.repo_status = [2];
+
+    const cancel = props => props.forEach(p => (p[0] = 3));
+
+    const delay = 200;
+
+    for (let i = 0; i < 1; i++) {
+      await App.wait(delay);
+
+      App._.git_version = await window.GitService.getGitVersion(App._.location);
+      if (!App._.git_version[0]) {
+        cancel([App._.git_lfs_version, App._.location_has_git, App._.location_has_lfs, App._.repo_status]);
+        continue;
+      }
+      await App.wait(delay);
+
+      App._.git_lfs_version = await window.GitService.getGitLfsVersion(App._.location);
+      if (!App._.git_lfs_version[0]) {
+        cancel([App._.location_has_git, App._.location_has_lfs, App._.repo_status]);
+        continue;
+      }
+      await App.wait(delay);
+
+      App._.location_has_git = [await window.GitService.check(App._.location + '/.git', false)];
+      if (!App._.location_has_git[0]) {
+        cancel([App._.location_has_lfs, App._.repo_status]);
+        continue;
+      }
+      await App.wait(delay);
+
+      App._.location_has_lfs = [await window.GitService.check(App._.location + '/.gitattributes', true)];
+      if (!App._.location_has_lfs[0]) {
+        cancel([App._.repo_status]);
+        continue;
+      }
+
+      await App.wait(delay);
+      App._.repo_status = await window.GitService.getStatus(App._.location);
+      App._.repo_status[0] = await App.isReadyForPush(App._.repo_status[1]);
+    }
+
+    App._.ready_for_upload =
+      App._.repo_status[0] === true && App._.location_has_git[0] === true && App._.location_has_lfs[0] === true;
+
+    App._.git_log.push('[VERIFICATION] [END] ==============================================================');
+  },
 };
 
 const getUser = async () => {
@@ -110,10 +198,18 @@ const init = async () => {
         project = App._.projects.find(p => p.ssh_url_to_repo === url || p.http_url_to_repo === url);
         if (project) break;
       }
-      if(project)
-        App._.project = project;
+      if (project) App._.project = project;
     }
   );
+  watch(
+    () => App._.step,
+    async () => {
+      if (App._.step === 3) {
+        await App.verifyGit();
+      }
+    }
+  );
+
   getUser();
 
   window.GitService.onMessage(chunk => {
@@ -131,10 +227,6 @@ const init = async () => {
         currentLine += c;
       }
     }
-    // let test = chunk;
-    // test = chunk.replaceAll('\n','$N\n');
-    // test = test.replaceAll('\r','$R\n');
-    // console.log(test);
   });
 };
 init();

@@ -2,14 +2,14 @@ import { shell, net } from 'electron';
 
 const default_header = {
   'Content-Type': 'application/json',
-  'Accept': 'application/json',
-  'user-agent': 'node.js'
+  Accept: 'application/json',
+  'user-agent': 'node.js',
 };
 
 const InternetService = {
-  openExternal: async (e, url) => shell.openExternal(url),
+  openExternal: async url => shell.openExternal(url),
 
-  getWebPageAsJson: async (e, options) => {
+  getWebPageAsJson: async options => {
     try {
       await net.resolveHost(options.host);
     } catch (err) {
@@ -29,10 +29,10 @@ const InternetService = {
               output += chunk;
             });
             response.on('end', () => {
-              resolve([response.statusCode,JSON.parse(output)]);
+              resolve([response.statusCode, JSON.parse(output)]);
             });
           } else {
-            resolve([response.statusCode,null]);
+            resolve([response.statusCode, null]);
           }
         });
         /** net.request does not throw error on ERR_CONNECTION_TIMED_OUT and similar,
@@ -43,11 +43,10 @@ const InternetService = {
         request.on('error', () => resolve(null));
         request.end();
       } catch (err) {
-        resolve([err,null]);
+        resolve([err, null]);
       }
     });
   },
-
 };
 
 export default InternetService;

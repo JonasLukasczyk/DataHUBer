@@ -20,14 +20,16 @@ async function createWindow() {
    */
 
   const services = {};
-  for(let [name,api] of [
-    ['MainService',MainService],
-    ['GitService',GitService],
-    ['InternetService',InternetService]
-  ]){
-    services[name] = Object.getOwnPropertyNames(api).filter(k => typeof api[k] === 'function')
-    for(let f of services[name])
-      ipcMain.handle(`${name}.${f}`, api[f]);
+  for (let [name, api] of [
+    ['MainService', MainService],
+    ['GitService', GitService],
+    ['InternetService', InternetService],
+  ]) {
+    services[name] = Object.getOwnPropertyNames(api).filter(k => typeof api[k] === 'function');
+    for (let f of services[name])
+      ipcMain.handle(`${name}.${f}`, (e, ...args) => {
+        return api[f](...args);
+      });
   }
 
   mainWindow = new BrowserWindow({
@@ -43,15 +45,13 @@ async function createWindow() {
           'electron-preload' + process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION
         )
       ),
-      additionalArguments: [
-        '--services='+JSON.stringify(services)
-      ]
+      additionalArguments: ['--services=' + JSON.stringify(services)],
     },
   });
 
   globalShortcut.register('Control+=', () => {
-    mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + 1)
-  })
+    mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + 1);
+  });
 
   if (process.env.DEV) {
     await mainWindow.loadURL(process.env.APP_URL);
@@ -69,9 +69,9 @@ async function createWindow() {
     });
   }
 
-  setTimeout(()=>{
-    mainWindow.webContents.setZoomLevel(2)
-  },100);
+  setTimeout(() => {
+    mainWindow.webContents.setZoomLevel(1.5);
+  }, 100);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
