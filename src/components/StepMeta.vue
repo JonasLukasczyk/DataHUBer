@@ -24,13 +24,6 @@ const _ = reactive({
   ],
 });
 
-// const addNode = node => {
-//   node.id = crypto.randomUUID();
-//   _.roc['@graph'].push(node);
-// };
-//
-// const addPerson = () => {};
-
 const deleteAuthor = id => {
   const i = _.roc['@graph'].findIndex(n => n['@id'] === id);
   if (i >= 0) _.roc['@graph'].splice(i, 1);
@@ -39,7 +32,7 @@ const deleteAuthor = id => {
 const editAuthor = id => {
   const found = _.roc['@graph'].find(n => n['@id'] === id);
   const node = found || {
-    '@id': crypto.randomUUID(),
+    '@id': '#' + crypto.randomUUID(),
     '@type': 'Person',
     name: '',
     email: '',
@@ -62,8 +55,29 @@ const editAuthor = id => {
   }).onOk(async r => {
     for (let k of Object.keys(r)) node[k] = r[k].v;
 
-    if (!found) _.roc['@graph'].push(node);
+    if (!found) {
+      _.roc['@graph'].push(node);
+      const persons = _.roc['@graph']
+        .filter(n => n['@type'] === 'Person')
+        .map(p => {
+          return { '@id': p['@id'] };
+        });
+      _.roc['@graph'].find(n => n['@id'] === './').author = persons;
+    }
   });
+};
+
+const enforce = (graph, template) => {
+  const n = graph.find(n => n['@id'] === template.id);
+  if (!n) {
+    graph.push(template);
+    return template;
+  } else {
+    for (let k of Object.keys(template).filter(k => k[0] !== '@'))
+      if (!Object.hasOwn(n, k) || !n[k]) n[k] = template[k];
+
+    return null;
+  }
 };
 
 const readRoc = async () => {
@@ -74,121 +88,150 @@ const readRoc = async () => {
     'https://w3id.org/ro/crate/1.1/context',
     {
       parameterValue: 'https://bioschemas.org/properties/parameterValue',
+      additionalProperty: 'https://bioschemas.org/properties/additionalProperty',
+      Sample: 'https://bioschemas.org/Sample',
       LabProcess: 'https://bioschemas.org/LabProcess',
     },
   ];
 
   if (!_.roc['@graph']) _.roc['@graph'] = [];
 
-  if (!_.roc['@graph'].find(n => n['@id'] === 'ro-crate-metadata.json'))
-    _.roc['@graph'].push({
-      '@id': 'ro-crate-metadata.json',
-      '@type': 'CreativeWork',
-      conformsTo: { '@id': 'https://w3id.org/ro/crate/1.1' },
-      about: { '@id': './' },
-    });
+  let graph = _.roc['@graph'];
 
-  if (!_.roc['@graph'].find(n => n['@id'] === './'))
-    _.roc['@graph'].push({
-      '@id': './',
-      '@type': 'Dataset',
-      name: '',
-      description: '',
-      author: [],
-      datePublished: new Date(Date.now()).toISOString().slice(0, 10),
-      license: 'https://creativecommons.org/licenses/by/4.0/',
-      publisher: [],
-      hasPart: [],
-    });
+  enforce(graph, {
+    '@id': 'ro-crate-metadata.json',
+    '@type': 'CreativeWork',
+    conformsTo: { '@id': 'https://w3id.org/ro/crate/1.1' },
+    about: { '@id': './' },
+  });
 
-  if (!_.roc['@graph'].find(n => n['@id'] === '#ct-instrument'))
-    _.roc['@graph'].push({
-      '@id': '#ct-instrument',
-      '@type': 'PropertyValue',
-      name: '',
-      value: '',
-    });
+  const ctOntologyUrl = 'http://id.nlm.nih.gov/mesh/D014056';
+  enforce(graph, {
+    '@id': './',
+    '@type': 'Dataset',
+    name: '',
+    description: '',
+    author: [],
+    datePublished: new Date(Date.now()).toISOString().slice(0, 10),
+    license: 'https://creativecommons.org/licenses/by/4.0/',
+    measurementTechnique: { '@id': ctOntologyUrl },
+    publisher: {
+      '@id': '#rptu-org',
+    },
+    hasPart: [],
+  });
 
-  if (!_.roc['@graph'].find(n => n['@type'] === 'LabProcess')) {
-    const node = {
+  enforce(graph, {
+    '@id': ctOntologyUrl,
+    '@type': 'DefinedTerm',
+    name: 'Tomography, X-Ray',
+  });
+
+  enforce(graph, {
+    '@id': '#rptu-org',
+    '@type': 'Organization',
+    name: 'RPTU University Kaiserslautern-Landau',
+    url: 'https://rptu.de/',
+  });
+
+  enforce(graph, {
+    '@id': '#Instrument',
+    '@type': 'PropertyValue',
+    name: '',
+    value: '',
+  });
+
+  enforce(graph, {
+    '@id': '#Sample',
+    '@type': 'Sample',
+    name: '',
+    description: '',
+    additionalProperty: [],
+  });
+
+  {
+    const labProcess = enforce(graph, {
       '@id': '#LabProcess',
       '@type': 'LabProcess',
       name: 'Computed Tomography',
-      instrument: { '@id': '#ct-instrument' },
+      instrument: { '@id': '#Instrument' },
       result: [],
-      agent: [],
       parameterValue: [],
-    };
-    [
-      [
-        'voltage',
-        'http://purl.allotrope.org/ontologies/quality#AFQ_0000048',
-        0,
-        '',
-        'kV',
-        'http://purl.obolibrary.org/obo/NCIT_C42551',
-      ],
-      [
-        'current',
-        'http://purl.allotrope.org/ontologies/quality#AFQ_0000049',
-        0,
-        '',
-        'uA',
-        'http://purl.obolibrary.org/obo/NCIT_C42536',
-      ],
-      [
-        'power',
-        'http://purl.allotrope.org/ontologies/result#AFR_0001917',
-        0,
-        '',
-        'W',
-        'http://purl.obolibrary.org/obo/NCIT_C204406',
-      ],
-      [
-        'exposure_time',
-        'http://purl.allotrope.org/ontologies/process#AFP_0003700',
-        0,
-        '',
-        's',
-        'http://purl.obolibrary.org/obo/NCIT_C42535',
-      ],
-
-      ['pixel_size', '', 0, '', 'um/pixel', ''],
-      ['image_width_scan', '', 0, '', 'pixel', ''],
-      ['image_height_scan', '', 0, '', 'pixel', ''],
-      ['number_of_images_scan', '', 0, '', '', ''],
-      ['filter', '', 0, '', '', ''],
-      ['binning', '', 0, '', '', ''],
-      ['source_isocenter_distance', '', 0, '', 'um', ''],
-      ['detector_isocenter_distance', '', 0, '', 'um', ''],
-      ['cone_angle', '', 0, '', 'deg', ''],
-      ['fan_angle', '', 0, '', 'deg', ''],
-      ['center_shift', '', 0, '', 'um', ''],
-      ['image_width_reco', '', 0, '', 'pixel', ''],
-      ['image_height_reco', '', 0, '', 'pixel', ''],
-      ['number_of_images_reco', '', 0, '', '', ''],
-      ['scaling_min', '', 0, '', '', ''],
-      ['scaling_max', '', 0, '', '', ''],
-    ].forEach(([name, nameRef, value, valueRef, unit, unitRef]) => {
-      const n = {
-        '@id': crypto.randomUUID(),
-        '@type': 'PropertyValue',
-        name: name,
-      };
-      if (nameRef) n.propertyID = nameRef;
-      if (value) n.value = value;
-      if (valueRef) n.valueReference = valueRef;
-      if (unit) n.unitText = unit;
-      if (unitRef) n.unitCode = unitRef;
-      node.parameterValue.push({ '@id': n['@id'] });
-      _.roc['@graph'].push(n);
     });
-    _.roc['@graph'].push(node);
+
+    if (labProcess) {
+      [
+        [
+          'voltage',
+          'http://purl.allotrope.org/ontologies/quality#AFQ_0000048',
+          0,
+          '',
+          'kV',
+          'http://purl.obolibrary.org/obo/NCIT_C42551',
+        ],
+        [
+          'current',
+          'http://purl.allotrope.org/ontologies/quality#AFQ_0000049',
+          0,
+          '',
+          'uA',
+          'http://purl.obolibrary.org/obo/NCIT_C42536',
+        ],
+        [
+          'power',
+          'http://purl.allotrope.org/ontologies/result#AFR_0001917',
+          0,
+          '',
+          'W',
+          'http://purl.obolibrary.org/obo/NCIT_C204406',
+        ],
+        [
+          'exposure_time',
+          'http://purl.allotrope.org/ontologies/process#AFP_0003700',
+          0,
+          '',
+          's',
+          'http://purl.obolibrary.org/obo/NCIT_C42535',
+        ],
+
+        ['pixel_size', '', 0, '', 'um/pixel', ''],
+        ['image_width_scan', '', 0, '', 'pixel', ''],
+        ['image_height_scan', '', 0, '', 'pixel', ''],
+        ['number_of_images_scan', '', 0, '', '', ''],
+        ['filter', '', 0, '', '', ''],
+        ['binning', '', 0, '', '', ''],
+        ['source_isocenter_distance', '', 0, '', 'um', ''],
+        ['detector_isocenter_distance', '', 0, '', 'um', ''],
+        ['cone_angle', '', 0, '', 'deg', ''],
+        ['fan_angle', '', 0, '', 'deg', ''],
+        ['center_shift', '', 0, '', 'um', ''],
+        ['image_width_reco', '', 0, '', 'pixel', ''],
+        ['image_height_reco', '', 0, '', 'pixel', ''],
+        ['number_of_images_reco', '', 0, '', '', ''],
+        ['scaling_min', '', 0, '', '', ''],
+        ['scaling_max', '', 0, '', '', ''],
+      ].forEach(([name, nameRef, value, valueRef, unit, unitRef]) => {
+        const n = {
+          '@id': '#' + crypto.randomUUID(),
+          '@type': 'PropertyValue',
+          name: name,
+        };
+        if (nameRef) n.propertyID = nameRef;
+        if (value) n.value = value;
+        if (valueRef) n.valueReference = valueRef;
+        if (unit) n.unitText = unit;
+        if (unitRef) n.unitCode = unitRef;
+        labProcess.parameterValue.push({ '@id': n['@id'] });
+        graph.push(n);
+      });
+    }
   }
 
   const files_on_disk = await window.MainService.getPathToTiffFiles(App._.location);
   // delete all file elements
-  _.roc['@graph'] = _.roc['@graph'].filter(n => n['@type'] !== 'MediaObject');
+  _.roc['@graph'] = graph.filter(n => n['@type'] !== 'MediaObject');
+  graph = _.roc['@graph'];
+
   const location_url = App._.location;
   // .split(' ').join('%20');
 
@@ -200,22 +243,16 @@ const readRoc = async () => {
       '@id': '.' + file_url.split(location_url)[1],
       '@type': 'MediaObject',
     };
-    _.roc['@graph'].push(n);
+    graph.push(n);
     files.push(n);
   }
   const files_refs = files.map(f => {
     return { '@id': f['@id'] };
   });
-  const dataset = _.roc['@graph'].find(n => n['@id'] === './');
+  const dataset = graph.find(n => n['@id'] === './');
   dataset.hasPart = files_refs;
-  const process = _.roc['@graph'].find(n => n['@type'] === 'LabProcess');
+  const process = graph.find(n => n['@id'] === '#LabProcess');
   process.result = files_refs;
-
-  // console.log(files_on_disk)
-  // const files = !_.roc['@graph'].filter(n=>n['@type']==='MediaObject');
-  // if(!files.length){
-  //   const tiffs = await =
-  // }
 
   console.log(_.roc);
 };
@@ -226,17 +263,7 @@ const reset = async () => {
 };
 
 const writeRoc = async () => {
-  const clone = JSON.parse(JSON.stringify(_.roc));
-
-  const persons = clone['@graph']
-    .filter(n => n['@type'] === 'Person')
-    .map(p => {
-      return { '@id': p['@id'] };
-    });
-  clone['@graph'].find(n => n['@id'] === './').author = persons;
-  clone['@graph'].find(n => n['@id'] === '#LabProcess').agent = persons;
-
-  await window.MainService.writeRoc(App._.location, JSON.stringify(clone, null, 1));
+  await window.MainService.writeRoc(App._.location, JSON.stringify(_.roc, null, 1));
 };
 
 const init = async () => {
@@ -271,7 +298,15 @@ onMounted(init);
         <div style="padding: 0 5em 2em 5em">
           <q-input v-model="root.name" label="Title" outlined dense style="padding: 0.5em 0" />
           <q-input v-model="root.description" label="Description" outlined dense style="padding: 0.5em 0" autogrow />
-          <q-input v-model="root.datePublished" label="Date" outlined dense style="padding: 0.5em 0" mask="####-##-##" placeholder='YYYY-MM-DD'>
+          <q-input
+            v-model="root.datePublished"
+            label="Date"
+            outlined
+            dense
+            style="padding: 0.5em 0"
+            mask="####-##-##"
+            placeholder="YYYY-MM-DD"
+          >
             <template #append>
               <q-icon name="event" class="cursor-pointer">
                 <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -281,7 +316,7 @@ onMounted(init);
             </template>
           </q-input>
           <q-input
-            v-model="_.roc['@graph'].find(n => n['@id'] === '#ct-instrument').name"
+            v-model="_.roc['@graph'].find(n => n['@id'] === '#Instrument').name"
             label="Instrument Model"
             outlined
             dense
@@ -344,7 +379,27 @@ onMounted(init);
         </div>
       </q-expansion-item>
 
-      <q-expansion-item icon="podcasts" label="Scan">
+      <q-expansion-item icon="sym_o_deployed_code" label="Sample">
+        <div style="padding: 0 5em 2em 5em">
+          <q-input
+            v-model="_.roc['@graph'].find(n => n['@id'] === '#Sample').name"
+            label="Name"
+            outlined
+            dense
+            style="padding: 0.5em 0"
+          />
+          <q-input
+            v-model="_.roc['@graph'].find(n => n['@id'] === '#Sample').description"
+            label="Description"
+            outlined
+            dense
+            autogrow
+            style="padding: 0.5em 0"
+          />
+        </div>
+      </q-expansion-item>
+
+      <q-expansion-item icon="sym_o_view_in_ar" label="Scan">
         <div style="margin: 0 auto 2em auto; max-width: 20em" v-if="_.roc">
           <div
             :def="
