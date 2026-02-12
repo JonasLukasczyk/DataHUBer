@@ -54,7 +54,6 @@ import GitLog from '../components/GitLog.vue';
         icon="upload"
         @click="App.push"
         :disabled="!App._.project || App._.git_busy"
-        dense
       />
     </div>
 

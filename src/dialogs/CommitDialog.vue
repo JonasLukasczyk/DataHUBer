@@ -70,37 +70,23 @@ const onReset = () => {};
           </div>
         </q-card-section>
 
-        <q-card-section v-if="_.modified.length">
-          <q-list dense>
-            <q-item-label header>Adding {{ _.modified.length }} File(s)</q-item-label>
-          </q-list>
-          <q-scroll-area style="font-size: 1em; height: 200px;" class="rounded-borders" :visible='true'>
+        <div v-for="(i, idx) in ['modified', 'deleted']" :key='idx'>
+          <q-card-section v-if="_[i].length">
             <q-list dense>
-              <q-item v-for="p in _.modified" :key="p">
-                <q-item-section avatar>
-                  <q-icon color="primary" name="add" />
-                </q-item-section>
-                <q-item-section>{{ p }}</q-item-section>
-              </q-item>
+              <q-item-label header>{{ idx === 0 ? 'Adding' : 'Removing' }} {{ _[i].length }} File(s)</q-item-label>
             </q-list>
-          </q-scroll-area>
-        </q-card-section>
-
-        <q-card-section v-if="_.deleted.length">
-          <q-list dense>
-            <q-item-label header>Adding {{ _.modified.length }} File(s)</q-item-label>
-          </q-list>
-          <q-scroll-area style="font-size: 1em; height: 200px;" class="rounded-borders" :visible='true'>
-            <q-list dense>
-              <q-item v-for="p in _.modified" :key="p">
-                <q-item-section avatar>
-                  <q-icon color="red-7" name="remove" />
-                </q-item-section>
-                <q-item-section>{{ p }}</q-item-section>
-              </q-item>
-            </q-list>
-          </q-scroll-area>
-        </q-card-section>
+            <q-scroll-area style="font-size: 1em; height: 200px" class="rounded-borders" :visible="true">
+              <q-list dense>
+                <q-item v-for="p in _[i]" :key="p">
+                  <q-item-section avatar>
+                    <q-icon color="primary" :name="idx === 0 ? 'add' : 'remove'" />
+                  </q-item-section>
+                  <q-item-section>{{ p }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-scroll-area>
+          </q-card-section>
+        </div>
 
         <q-card-actions align="right" style="padding: 0 1.2em 1.5em 0">
           <q-btn color="primary" label="Commit" type="submit" />
