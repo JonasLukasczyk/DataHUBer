@@ -61,6 +61,16 @@ const GitService = {
       send(`$ git ${args.join(' ')}\n`);
 
       let output = '';
+      let buffer = '';
+      let timer = null;
+      const INTERVAL = 300;
+
+      const flush = () => {
+        if (!buffer) return;
+        send(buffer);
+        buffer = '';
+        timer = null;
+      };
 
       let child;
       try {
@@ -73,7 +83,8 @@ const GitService = {
         if (!data) return;
         const text = data.toString();
         output += text;
-        send(text);
+        buffer += text;
+        if (!timer) timer = setTimeout(flush, INTERVAL);
       };
 
       child.stdout.on('data', onData);
@@ -81,11 +92,13 @@ const GitService = {
 
       // ----- lifecycle -----
       child.on('error', err => {
+        flush();
         console.error('[Git spawn error]', err);
         resolve([false, err.toString()]);
       });
 
       child.on('exit', code => {
+        flush();
         resolve([code === 0, output]);
       });
     });
@@ -111,7 +124,7 @@ const GitService = {
 
   addAll: async path =>
     await GitService.run({
-      args: ['add', '.'],
+      args: ['add', '.', '-v'],
       cwd: path,
     }),
 
@@ -212,11 +225,11 @@ const GitService = {
         });
   },
 
-  push: async (path, remote, branch) =>
+  push: async (path, remote, branch, debug) =>
     await GitService.run({
       args: ['push', '-v', remote, branch],
       cwd: path,
-      debug: true,
+      debug: debug,
     }),
 
   check: async (path, isFile) => {

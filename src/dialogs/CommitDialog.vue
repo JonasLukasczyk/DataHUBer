@@ -74,7 +74,7 @@ const onReset = () => {};
           <q-list dense>
             <q-item-label header>Adding {{ _.modified.length }} File(s)</q-item-label>
           </q-list>
-          <q-scroll-area style="font-size: 1em; height: 200px; zoom: 0.8" class="rounded-borders bg-grey-4">
+          <q-scroll-area style="font-size: 1em; height: 200px;" class="rounded-borders" :visible='true'>
             <q-list dense>
               <q-item v-for="p in _.modified" :key="p">
                 <q-item-section avatar>
@@ -90,7 +90,7 @@ const onReset = () => {};
           <q-list dense>
             <q-item-label header>Adding {{ _.modified.length }} File(s)</q-item-label>
           </q-list>
-          <q-scroll-area style="font-size: 1em; height: 200px; zoom: 0.8" class="rounded-borders bg-grey-4">
+          <q-scroll-area style="font-size: 1em; height: 200px;" class="rounded-borders" :visible='true'>
             <q-list dense>
               <q-item v-for="p in _.modified" :key="p">
                 <q-item-section avatar>

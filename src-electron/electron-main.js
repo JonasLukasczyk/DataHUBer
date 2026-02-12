@@ -33,7 +33,7 @@ async function createWindow() {
   }
 
   mainWindow = new BrowserWindow({
-    icon: path.resolve(currentDir, 'icons/icon.png'), // tray icon
+    icon: path.resolve(currentDir, 'icons/linux-512x512.png'), // tray icon
     width: 1000,
     height: 600,
     webPreferences: {

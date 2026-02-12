@@ -17,28 +17,28 @@ import StepPush from '../components/StepPush.vue';
       color="primary"
       animated
       header-nav
-      header-class="step_header"
+      flat
     >
-      <q-step :name="-1" title="" icon="home">
+      <q-step :name="-1" title="" icon="home" color="grey">
         <div>
-          <h4>Welcome to DataHUBer.</h4>
+          <h4>Welcome to DataHUBer</h4>
           <ul>
             <li>
-              <b>Overview - </b>This tools helps you to step by step upload a local directory to the RPTU DataHUB.
+              <b>Overview - </b>This tools helps you to upload step by step a local directory to the RPTU DataHUB.
             </li>
             <li>
               <b>Navigation - </b>
               You can always navigate to a specific step by clicking on the menu at the top.
             </li>
             <li>
-              <b>Steps - </b>
+              <b>Help - </b>
               Data you need to enter and actions you need to take are always displayed at the top of each step, and
               detailed instructions are located below.
             </li>
           </ul>
         </div>
         <div style="text-align: center">
-          <q-btn label="Continue" icon="arrow_circle_right" color="primary" @click="() => (_.step = 0)" />
+          <q-btn label="Continue" icon="arrow_circle_right" color="primary" @click="() => (App._.step = 0)" />
         </div>
       </q-step>
 
@@ -51,7 +51,13 @@ import StepPush from '../components/StepPush.vue';
         :disable="!App._.user"
         :color="App._.location ? 'green-7' : 'grey'"
       />
-      <StepMeta :name="2" title="Meta Data" icon="sym_o_add_notes" :disable="App._.location === ''" />
+      <StepMeta
+        :name="2"
+        title="Meta Data"
+        icon="sym_o_add_notes"
+        :disable="App._.location === ''"
+        :color="App.minimal_meta() ? 'green-7' : 'grey'"
+      />
       <StepGit
         :name="3"
         title="Git Status"
@@ -60,19 +66,30 @@ import StepPush from '../components/StepPush.vue';
         :color="App._.ready_for_upload ? 'green-7' : 'grey'"
       />
 
-      <StepPush :name="4" title="Upload" icon="upload" :disable="!App._.ready_for_upload" />
+      <StepPush :name="4" title="Upload" icon="upload" :disable="!App._.ready_for_upload" color='grey' />
     </q-stepper>
   </q-page>
 </template>
 
 <style>
+.body--light {
+  --q-grey-line: #f00; /* Light grey for light mode */
+  --q-grey-line-active: #f00; /* Light grey for light mode */
+}
+
+.body--dark {
+  --q-grey-bg: none;
+  --q-grey-line: #444;
+  --q-grey-line-active: #999;
+}
+
 .q-stepper__tab {
-  border-bottom: 0.4em solid #ccc;
+  border-bottom: 0.4em solid var(--q-grey-line);
   padding-bottom: 0;
 }
 
 .q-stepper__tab--active {
-  border-bottom-color: var(--primary);
+  border-bottom-color: var(--q-grey-line-active) !important;
 }
 
 p,

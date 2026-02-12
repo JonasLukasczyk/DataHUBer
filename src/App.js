@@ -4,6 +4,7 @@ import { Dialog } from 'quasar';
 
 const App = {
   _: reactive({
+    git_busy: false,
     step: -1,
     location: '',
     user: null,
@@ -12,15 +13,33 @@ const App = {
     project: null,
     projects: [],
     git_version: null,
+    git_debug: false,
     git_lfs_version: null,
     location_has_git: null,
     location_has_lfs: null,
     repo_status: null,
     ready_for_upload: false,
+    roc: null,
   }),
   config: reactive({
     token: '',
   }),
+
+  meta_find: id => (App._.roc ? App._.roc['@graph'].find(n => n['@id'] === id) : null),
+  minimal_meta: () => {
+    const root = App.meta_find('./');
+    const instrument = App.meta_find('#Instrument');
+    return (
+      root &&
+      root.name &&
+      root.description &&
+      root.datePublished &&
+      root.author.length &&
+      root.license &&
+      instrument &&
+      instrument.value
+    );
+  },
 
   visit: url => window.InternetService.openExternal(url),
 
@@ -83,14 +102,17 @@ const App = {
   },
 
   commit: async () => {
+    if (App._.git_busy) return;
     Dialog.create({
       component: CommitDialog,
     }).onOk(async msg => {
-      App._.git_log.push('[COMMIT] [START] ============================================================');
+      App._.git_busy = true;
+      App._.git_log.push('[COMMIT] [START] ============================================================\n');
       await window.GitService.setGitUser(App._.location, App._.user.name, App._.user.email);
       await window.GitService.addAll(App._.location);
       await window.GitService.commit(App._.location, msg);
-      App._.git_log.push('[COMMIT] [END]   ============================================================');
+      App._.git_log.push('[COMMIT] [END]   ============================================================\n');
+      App._.git_busy = false;
       await App.verifyGit();
     });
   },
@@ -100,8 +122,23 @@ const App = {
     return status[1].length < 1;
   },
 
+  push: async () => {
+    if (App._.git_busy) return;
+    App._.git_busy = true;
+    App._.git_log.push('[PUSH] [START] ============================================================\n');
+    const remote = App._.project.http_url_to_repo;
+    const patched_remote = App.toHttpsWithToken(remote);
+    await window.GitService.setRemoteUrl(App._.location, 'origin', patched_remote);
+    await window.GitService.push(App._.location, 'origin', 'main', App._.git_debug);
+    await window.GitService.setRemoteUrl(App._.location, 'origin', App.urlWithoutCredentials(patched_remote));
+    App._.git_log.push('[PUSH] [END] ==============================================================\n');
+    App._.git_busy = false;
+  },
+
   verifyGit: async () => {
-    App._.git_log.push('[VERIFICATION] [START] ============================================================');
+    if (App._.git_busy) return;
+    App._.git_busy = true;
+    App._.git_log.push('[VERIFICATION] [START] ============================================================\n');
     App._.ready_for_upload = false;
     App._.git_version = [2];
     App._.git_lfs_version = [2];
@@ -151,7 +188,9 @@ const App = {
     App._.ready_for_upload =
       App._.repo_status[0] === true && App._.location_has_git[0] === true && App._.location_has_lfs[0] === true;
 
-    App._.git_log.push('[VERIFICATION] [END] ==============================================================');
+    App._.git_log.push('[VERIFICATION] [END] ==============================================================\n');
+
+    App._.git_busy = false;
   },
 };
 

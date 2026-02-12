@@ -1,6 +1,5 @@
 <script setup>
 import App from '../App.js';
-import pat1 from '../assets/pat_1.jpg';
 </script>
 
 <template>
@@ -85,15 +84,14 @@ import pat1 from '../assets/pat_1.jpg';
 
         <li>
           On the newly opened page, click the <strong>eye icon</strong> in the green box to reveal your token. Copy the
-          token and paste it into the <strong>"Token"</strong> input field in DataHUBer. <br />
-          <div style="color: #cc0000">
-            <strong>Important:</strong> This is the <em>only</em> time the token will be visible. If you do not copy it
-            now, you will need to create a new token.
-          </div>
-          <img
-            :src="pat1"
-            style="width: 90%; border: 0.1em solid black; border-radius: 0.5em; padding: 1em; margin: 1em"
-          />
+          token and paste it into the <strong>"Token"</strong> input field in DataHUBer.<br />
+          <q-banner class="bg-red-9 rounded-borders q-ma-sm">
+            <template v-slot:avatar>
+              <q-icon name="warning" />
+            </template>
+            <b>This is the only time the token will be visible. If you do not copy it now, you will need to create a new
+              token.</b>
+          </q-banner>
         </li>
 
         <li>

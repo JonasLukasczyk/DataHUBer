@@ -25,12 +25,12 @@ const _ = reactive({
 });
 
 const deleteAuthor = id => {
-  const i = _.roc['@graph'].findIndex(n => n['@id'] === id);
-  if (i >= 0) _.roc['@graph'].splice(i, 1);
+  const i = App._.roc['@graph'].findIndex(n => n['@id'] === id);
+  if (i >= 0) App._.roc['@graph'].splice(i, 1);
 };
 
 const editAuthor = id => {
-  const found = _.roc['@graph'].find(n => n['@id'] === id);
+  const found = App.meta_find(id);
   const node = found || {
     '@id': '#' + crypto.randomUUID(),
     '@type': 'Person',
@@ -56,19 +56,19 @@ const editAuthor = id => {
     for (let k of Object.keys(r)) node[k] = r[k].v;
 
     if (!found) {
-      _.roc['@graph'].push(node);
-      const persons = _.roc['@graph']
+      App._.roc['@graph'].push(node);
+      const persons = App._.roc['@graph']
         .filter(n => n['@type'] === 'Person')
         .map(p => {
           return { '@id': p['@id'] };
         });
-      _.roc['@graph'].find(n => n['@id'] === './').author = persons;
+      App.meta_find('./').author = persons;
     }
   });
 };
 
 const enforce = (graph, template) => {
-  const n = graph.find(n => n['@id'] === template.id);
+  const n = App.meta_find(template.id);
   if (!n) {
     graph.push(template);
     return template;
@@ -81,10 +81,10 @@ const enforce = (graph, template) => {
 };
 
 const readRoc = async () => {
-  _.roc = await window.MainService.readRoc(App._.location);
+  App._.roc = await window.MainService.readRoc(App._.location);
 
-  if (!_.roc) _.roc = {};
-  _.roc['@context'] = [
+  if (!App._.roc) App._.roc = {};
+  App._.roc['@context'] = [
     'https://w3id.org/ro/crate/1.1/context',
     {
       parameterValue: 'https://bioschemas.org/properties/parameterValue',
@@ -94,9 +94,9 @@ const readRoc = async () => {
     },
   ];
 
-  if (!_.roc['@graph']) _.roc['@graph'] = [];
+  if (!App._.roc['@graph']) App._.roc['@graph'] = [];
 
-  let graph = _.roc['@graph'];
+  let graph = App._.roc['@graph'];
 
   enforce(graph, {
     '@id': 'ro-crate-metadata.json',
@@ -137,7 +137,8 @@ const readRoc = async () => {
   enforce(graph, {
     '@id': '#Instrument',
     '@type': 'PropertyValue',
-    name: '',
+    name: 'Computed Tomography Scanner',
+    propertyID: 'http://id.nlm.nih.gov/mesh/D015898',
     value: '',
   });
 
@@ -149,6 +150,7 @@ const readRoc = async () => {
     additionalProperty: [],
   });
 
+  // lab process
   {
     const labProcess = enforce(graph, {
       '@id': '#LabProcess',
@@ -157,6 +159,9 @@ const readRoc = async () => {
       instrument: { '@id': '#Instrument' },
       result: [],
       parameterValue: [],
+      object: {
+        '@id': '#Sample',
+      },
     });
 
     if (labProcess) {
@@ -229,8 +234,8 @@ const readRoc = async () => {
 
   const files_on_disk = await window.MainService.getPathToTiffFiles(App._.location);
   // delete all file elements
-  _.roc['@graph'] = graph.filter(n => n['@type'] !== 'MediaObject');
-  graph = _.roc['@graph'];
+  App._.roc['@graph'] = graph.filter(n => n['@type'] !== 'MediaObject');
+  graph = App._.roc['@graph'];
 
   const location_url = App._.location;
   // .split(' ').join('%20');
@@ -249,12 +254,12 @@ const readRoc = async () => {
   const files_refs = files.map(f => {
     return { '@id': f['@id'] };
   });
-  const dataset = graph.find(n => n['@id'] === './');
+  const dataset = App.meta_find('./');
   dataset.hasPart = files_refs;
-  const process = graph.find(n => n['@id'] === '#LabProcess');
+  const process = App.meta_find('#LabProcess');
   process.result = files_refs;
 
-  console.log(_.roc);
+  console.log(App._.roc);
 };
 
 const reset = async () => {
@@ -263,12 +268,12 @@ const reset = async () => {
 };
 
 const writeRoc = async () => {
-  await window.MainService.writeRoc(App._.location, JSON.stringify(_.roc, null, 1));
+  await window.MainService.writeRoc(App._.location, JSON.stringify(App._.roc, null, 1));
 };
 
 const init = async () => {
   await readRoc();
-  watch(() => _.roc, App.debounce(writeRoc, 1000), { deep: true });
+  watch(() => App._.roc, App.debounce(writeRoc, 1000), { deep: true });
 };
 
 onMounted(init);
@@ -276,25 +281,14 @@ onMounted(init);
 
 <template>
   <q-step v-bind="$attrs">
-    <div class="q-gutter-md row" style="margin: 0 auto 2em auto; width: 35em">
-      <q-btn label="Import JSON" icon="sym_o_source_notes" style="background-color: #ddd" />
-      <q-btn label="Reset" icon="refresh" style="background-color: #ddd" @click="reset" />
+    <div class="q-gutter-md" style="margin: 0 auto 2em auto; text-align: center">
+      <!-- <q-btn label="Import JSON" icon="sym_o_source_notes" style="background-color: var(--q-grey-line)" /> -->
+      <q-btn label="Reset" icon="refresh" style="background-color: var(--q-grey-line)" @click="reset" />
       <q-btn label="Continue" icon="arrow_circle_right" color="primary" @click="() => App._.step++" />
     </div>
 
-    <q-list bordered class="rounded-borders" style="max-width: 60em; margin: 0 auto" v-if="_.roc">
-      <q-expansion-item
-        expand-separator
-        icon="sym_o_database"
-        label="General"
-        :def="root = _.roc['@graph'].find(n => n['@id'] === './')"
-        :header-style="
-          root.name && root.description && _.roc['@graph'].find(n => n['@type'] === 'Person')
-            ? 'color:#090;'
-            : 'color:#c00;'
-        "
-        default-opened
-      >
+    <q-list bordered class="rounded-borders" style="max-width: 60em; margin: 0 auto" v-if="App._.roc">
+      <q-expansion-item expand-separator icon="sym_o_database" label="General" :def="root = App.meta_find('./')">
         <div style="padding: 0 5em 2em 5em">
           <q-input v-model="root.name" label="Title" outlined dense style="padding: 0.5em 0" />
           <q-input v-model="root.description" label="Description" outlined dense style="padding: 0.5em 0" autogrow />
@@ -316,7 +310,7 @@ onMounted(init);
             </template>
           </q-input>
           <q-input
-            v-model="_.roc['@graph'].find(n => n['@id'] === '#Instrument').name"
+            v-model="App.meta_find('#Instrument').value"
             label="Instrument Model"
             outlined
             dense
@@ -325,7 +319,7 @@ onMounted(init);
 
           <q-list
             style="border-radius: 0.3em; border-color: silver; width: 100%; margin: 0.5em 0"
-            v-if="_.roc"
+            v-if="App._.roc"
             bordered
             dense
           >
@@ -341,7 +335,7 @@ onMounted(init);
             /></q-item-label>
 
             <q-item
-              v-for="p in _.roc['@graph'].filter(n => n['@type'] === 'Person')"
+              v-for="p in App._.roc['@graph'].filter(n => n['@type'] === 'Person')"
               :key="p['@id']"
               dense
               style="margin: 0 0 0.5em 0"
@@ -367,7 +361,7 @@ onMounted(init);
           </q-list>
 
           <q-select
-            v-model="_.roc['@graph'].find(n => n['@id'] === './').license"
+            v-model="App.meta_find('./').license"
             :options="_.licenses"
             label="License"
             outlined
@@ -381,15 +375,9 @@ onMounted(init);
 
       <q-expansion-item icon="sym_o_deployed_code" label="Sample">
         <div style="padding: 0 5em 2em 5em">
+          <q-input v-model="App.meta_find('#Sample').name" label="Name" outlined dense style="padding: 0.5em 0" />
           <q-input
-            v-model="_.roc['@graph'].find(n => n['@id'] === '#Sample').name"
-            label="Name"
-            outlined
-            dense
-            style="padding: 0.5em 0"
-          />
-          <q-input
-            v-model="_.roc['@graph'].find(n => n['@id'] === '#Sample').description"
+            v-model="App.meta_find('#Sample').description"
             label="Description"
             outlined
             dense
@@ -400,13 +388,9 @@ onMounted(init);
       </q-expansion-item>
 
       <q-expansion-item icon="sym_o_view_in_ar" label="Scan">
-        <div style="margin: 0 auto 2em auto; max-width: 20em" v-if="_.roc">
-          <div
-            :def="
-              parameter_ids = _.roc['@graph'].find(n => n['@id'] === '#LabProcess').parameterValue.map(pv => pv['@id'])
-            "
-          >
-            <div :def="parameters = _.roc['@graph'].filter(n => parameter_ids.indexOf(n['@id']) >= 0)">
+        <div style="margin: 0 auto 2em auto; max-width: 20em" v-if="App._.roc">
+          <div :def="parameter_ids = App.meta_find('#LabProcess').parameterValue.map(pv => pv['@id'])">
+            <div :def="parameters = App._.roc['@graph'].filter(n => parameter_ids.indexOf(n['@id']) >= 0)">
               <q-input
                 v-for="pv in parameters"
                 :key="pv['@id']"
@@ -421,9 +405,9 @@ onMounted(init);
         </div>
       </q-expansion-item>
 
-      <div :def="files = _.roc['@graph'].filter(n => n['@type'] === 'MediaObject')">
+      <div v-if="false" :def="files = App._.roc['@graph'].filter(n => n['@type'] === 'MediaObject')">
         <q-expansion-item icon="folder" :label="`Data Files (${files.length})`">
-          <q-list v-if="_.roc">
+          <q-list v-if="App._.roc">
             <q-item v-for="f in files" :key="f['@id']">
               <q-item-section>
                 {{ f['@id'] }}
@@ -433,22 +417,18 @@ onMounted(init);
         </q-expansion-item>
       </div>
     </q-list>
-    <!-- <q-list bordered class="rounded-borders col"> -->
-    <!--   <q-item-label header> -->
-    <!--     Authors -->
-    <!--     <q-btn -->
-    <!--       @click="clear" -->
-    <!--       style="float: right; margin: -0.2em 0 0 0; font-size: 0.85em" -->
-    <!--       icon="close" -->
-    <!--       flat -->
-    <!--       round -->
-    <!--       dense -->
-    <!--     /> -->
-    <!--   </q-item-label> -->
-    <!--   <q-item> -->
-    <!--     Person -->
-    <!--   </q-item> -->
-    <!-- </q-list> -->
+
+    <div>
+      <h5 style="margin-bottom: 1em">Instructions</h5>
+      <ul>
+        <li>In this step, you can annotate the dataset with metadata to make it <b>FAIR-compliant</b>.</li>
+        <li>Please follow a <i>best-effort</i> approach and provide as much metadata as possible.</li>
+        <li>
+          Metadata can be added for the dataset as a whole <b>(General)</b>, the scanned sample <b>(Sample)</b>, and the
+          scanning process <b>(Scan)</b>.
+        </li>
+      </ul>
+    </div>
   </q-step>
 </template>
 

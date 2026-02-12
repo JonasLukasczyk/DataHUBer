@@ -1,16 +1,6 @@
 <script setup>
 import App from '../App.js';
 import GitLog from '../components/GitLog.vue';
-
-const push = async () => {
-  App._.git_log.push('[PUSH] [START] ============================================================');
-  const remote = App._.project.http_url_to_repo;
-  const patched_remote = App.toHttpsWithToken(remote);
-  await window.GitService.setRemoteUrl(App._.location, 'origin', patched_remote);
-  await window.GitService.push(App._.location, 'origin', 'main');
-  await window.GitService.setRemoteUrl(App._.location, 'origin', App.urlWithoutCredentials(patched_remote));
-  App._.git_log.push('[PUSH] [END] ==============================================================');
-};
 </script>
 
 <template>
@@ -39,7 +29,7 @@ const push = async () => {
             dense
             flat
             icon="sym_o_captive_portal"
-            @click.stop.prevent="() =>App.visit(App._.project.http_url_to_repo)"
+            @click.stop.prevent="() => App.visit(App._.project.http_url_to_repo)"
             v-if="App._.project"
           >
             <q-tooltip> Show in Browser </q-tooltip>
@@ -50,13 +40,22 @@ const push = async () => {
             dense
             flat
             icon="add"
-            @click.stop.prevent="() => visit('https://datahub.rz.rptu.de/projects/new?namespace_id=225#blank_project')"
+            @click.stop.prevent="
+              () => App.visit('https://datahub.rz.rptu.de/projects/new?namespace_id=225#blank_project')
+            "
           >
             <q-tooltip> New Project </q-tooltip>
           </q-btn>
         </template>
       </q-select>
-      <q-btn label="Upload" color="primary" icon="upload" @click="push" :disabled="!App._.project" desne />
+      <q-btn
+        label="Upload"
+        color="primary"
+        icon="upload"
+        @click="App.push"
+        :disabled="!App._.project || App._.git_busy"
+        dense
+      />
     </div>
 
     <div class="q-gutter-md row">
