@@ -16,7 +16,7 @@ import GitLog from '../components/GitLog.vue';
         option-label="name_with_namespace"
         options-dense
         @filter="App.getProjects"
-        style="min-width: 40em"
+        class="col"
         dense
       >
         <template v-slot:prepend>

@@ -198,6 +198,7 @@ const GitService = {
       attr,
       `
 *.tif* filter=lfs diff=lfs merge=lfs -text
+*.rek filter=lfs diff=lfs merge=lfs -text
 *preview*.tif* -filter -diff -merge text
     `
     );
