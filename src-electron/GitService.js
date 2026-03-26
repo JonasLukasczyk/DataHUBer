@@ -199,11 +199,16 @@ const GitService = {
       `
 *.tif* filter=lfs diff=lfs merge=lfs -text
 *.rek filter=lfs diff=lfs merge=lfs -text
+*.raw filter=lfs diff=lfs merge=lfs -text
 *preview*.tif* -filter -diff -merge text
     `
     );
     await GitService.run({
-      args: ['add', attr],
+      args: ['add', '.gitattributes'],
+      cwd: path,
+    });
+    await GitService.run({
+      args: ['config', '--add', 'safe.directory', path],
       cwd: path,
     });
   },
