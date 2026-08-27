@@ -1,5 +1,7 @@
 <script setup>
 import App from '../App.js';
+
+const URL = `https://datahub.rz.rptu.de/-/user_settings/personal_access_tokens/legacy/new?name=DataHUBer&description=Token+used+to+authenticate+DataHUBer+actions&scopes=api`;
 </script>
 
 <template>
@@ -19,17 +21,7 @@ import App from '../App.js';
         </template>
       </q-input>
 
-      <q-btn
-        label="New Token"
-        icon="add"
-        color="primary"
-        @click="
-          () =>
-            App.visit(
-              'https://datahub.rz.rptu.de/-/user_settings/personal_access_tokens?page=1&state=active&sort=expires_asc'
-            )
-        "
-      />
+      <q-btn label="New Token" icon="add" color="primary" @click="() => App.visit(URL)" />
     </div>
 
     <div v-if="App._.user && !App._.error" class="q-gutter-md row" style="margin: 1em">
@@ -65,39 +57,40 @@ import App from '../App.js';
       <h5 style="margin-bottom: 1em">Instructions</h5>
       <ol>
         <li>
-          Click the <strong>"New Token"</strong> button above. This will open the DataHUB page in your browser, where
-          you can create a personal access token. You will first need to log in via <em>Shibboleth</em>.
+          You can use a previously created <strong>token</strong> or create a new one by following the instructions
+          below.
         </li>
 
         <li>
-          On the DataHUB page, navigate to <strong>"Personal access tokens"</strong> and click
-          <strong>"Add new token"</strong>.
+          To create a new token, click the <strong>"New Token"</strong> button above. This will open the DataHUB page in
+          your browser, where you can create a personal access token. You may first need to sign in via
+          <em>Shibboleth</em>.
         </li>
 
-        <li>Enter a name for the token (for example, <em>"MyToken"</em> or <em>"LabDesktop"</em>).</li>
-
-        <li>Leave the <strong>Description</strong> field empty.</li>
-
-        <li>Under <strong>Scopes</strong>, select <strong>all</strong> available checkboxes.</li>
-
-        <li>Click the <strong>"Create Token"</strong> button in the bottom left corner.</li>
+        <li>
+          The token creation form is already prefilled with the required settings. Simply click the
+          <strong>"Generate token"</strong> button at the bottom of the page.
+        </li>
 
         <li>
-          On the newly opened page, click the <strong>eye icon</strong> in the green box to reveal your token. Copy the
-          token and paste it into the <strong>"Token"</strong> input field in DataHUBer.<br />
-          <q-banner class="bg-red-9 rounded-borders q-ma-sm">
+          On the next page, click the <strong>eye icon</strong> in the green box to reveal your token. Copy the token
+          and paste it into the <strong>"Token"</strong> input field in DataHUBer.<br />
+
+          <q-banner class="rounded-borders q-ma-sm" style='background-color:#880000;max-width:32em;'>
             <template v-slot:avatar>
               <q-icon name="warning" />
             </template>
-            <b>This is the only time the token will be visible. If you do not copy it now, you will need to create a new
-              token.</b>
+            <b>
+              This is the only time the token will be visible. Make sure to copy it now. If you lose it, you will need
+              to create a new token.
+            </b>
           </q-banner>
         </li>
 
         <li>
-          DataHUBer will automatically verify the token by fetching your user data. If your name and email address are
-          displayed, the token is valid and you can proceed to the next step. The DataHUBer will also remember the
-          entered Token for future sessions.
+          DataHUBer will automatically verify the token by retrieving your user information. If your name and email
+          address are displayed, the token is valid and you can proceed to the next step. DataHUBer will also remember
+          the token for future sessions.
         </li>
       </ol>
     </div>
