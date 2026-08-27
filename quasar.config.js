@@ -194,7 +194,7 @@ export default defineConfig((/* ctx */) => {
           target: [
             {
               target: 'nsis',
-              arch: ['x64', 'arm64', 'ia32'],
+              arch: ['x64', 'arm64'],
             },
           ],
         },
